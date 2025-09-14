@@ -45,17 +45,17 @@ for w in words:
 # plt.axis("off")
 # plt.show()
 
-
-p = N[0].float()
+P= N.float()
+P /=P.sum(1,keepdim=True) # broadcasting (27,27)/(27,1)
 
 g= torch.Generator().manual_seed(2147483647)
 
+# print(P)
 for i in range(10):  
     ix =0
     out =[]
     while True:
-        p = N[ix].float()
-        p = p / p.sum()
+        p =P[ix] 
         ix =torch.multinomial(p,num_samples=1,replacement=True, generator=g).item()
         out.append(itos[ix])
         if ix ==0: # end token
