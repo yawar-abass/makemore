@@ -88,7 +88,7 @@ print(f'{nll/n}')
 
 xs,ys =[], []
 
-for w in words[1:]:
+for w in words[:1]:
     chs = ['.']+list(w)+['.']
     for ch1, ch2 in zip(chs, chs[1:]):
         ix1 = stoi[ch1]
@@ -99,16 +99,23 @@ for w in words[1:]:
 xs = torch.tensor(xs)
 ys = torch.tensor(ys)
 print(xs,ys)
-
-# forward pass
 import torch.nn.functional as F
-xenc = F.one_hot(xs,num_classes=27).float()
-W= torch.randn((27,27),generator=g, requires_grad=True)
-logits = xenc @ W #log counts
-counts = logits.exp()
-probs = counts / counts.sum(1,keepdim=True)
-loss = -probs[torch.arange(5),ys].log().mean()
 
-#backward pass
-W.grad = None # set to zero the gradient pytorch
-loss.backward()
+
+W= torch.randn((27,27),generator=g,requires_grad=True)
+
+(W**2).mean()
+
+
+for k in range(100):
+      # forward pass
+      xenc = F.one_hot(xs,num_classes=27).float()
+      logits = xenc @ W # predict log counts
+      counts = logits.exp() # equivalent to N
+      probs = counts / counts.sum(1,keepdim=True) #prob for next char
+      loss = -probs[torch.arange(5),ys].log().mean() + 0.01 *(W**2).mean() #loss +regulirization      #backward pass
+      
+      #backward pass
+      W.grad = None # set to zero the gradient pytorch
+      loss.backward()
+      W.data += -50 *W.grad
