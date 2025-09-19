@@ -7,7 +7,7 @@ a = max(len(w) for w in words)
 
 b ={}
 
-for w in words:
+for w in words: 
     chs = ['<S>']+list(w)+['<E>']
     for ch1, ch2 in zip(chs, chs[1:]):
         bigram =(ch1,ch2)
@@ -45,12 +45,13 @@ for w in words:
 # plt.axis("off")
 # plt.show()
 
-P= N.float()
+P= (N+1).float() # +1 is for model smoothing (laplace)
 P /=P.sum(1,keepdim=True) # broadcasting (27,27)/(27,1)
 
 g= torch.Generator().manual_seed(2147483647)
 
-# print(P)
+# print(P) 
+# prediction
 for i in range(10):  
     ix =0
     out =[]
@@ -61,6 +62,53 @@ for i in range(10):
         if ix ==0: # end token
             break
     
-    print(''.join(out)) 
+    # print(''.join(out)) 
     
 
+log_likelihood = 0.0
+n=0
+for w in words[1:]:
+    chs = ['.']+list(w)+['.']
+    for ch1, ch2 in zip(chs, chs[1:]):
+        ix1 = stoi[ch1]
+        ix2 = stoi[ch2]
+        prob = P[ix1,ix2]
+        logprob = torch.log(prob)
+        log_likelihood +=logprob
+        # print(f'{ch1}{ch2}:{prob:.4f} {logprob:.4f}')
+        n += 1
+    
+
+print(f'{log_likelihood =}')
+nll = - log_likelihood
+print(f'{nll =}')
+print(f'{nll/n}')
+
+# create the training set of bigrams(x,y)
+
+xs,ys =[], []
+
+for w in words[1:]:
+    chs = ['.']+list(w)+['.']
+    for ch1, ch2 in zip(chs, chs[1:]):
+        ix1 = stoi[ch1]
+        ix2 = stoi[ch2]
+        xs.append(ix1)
+        ys.append(ix2)
+
+xs = torch.tensor(xs)
+ys = torch.tensor(ys)
+print(xs,ys)
+
+# forward pass
+import torch.nn.functional as F
+xenc = F.one_hot(xs,num_classes=27).float()
+W= torch.randn((27,27),generator=g, requires_grad=True)
+logits = xenc @ W #log counts
+counts = logits.exp()
+probs = counts / counts.sum(1,keepdim=True)
+loss = -probs[torch.arange(5),ys].log().mean()
+
+#backward pass
+W.grad = None # set to zero the gradient pytorch
+loss.backward()
